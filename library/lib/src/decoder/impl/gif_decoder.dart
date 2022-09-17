@@ -12,16 +12,18 @@ class GifDecoder extends BaseDecoder with MutilFileHeaderAndFooterValidator {
   String get decoderName => 'gif';
 
   Size _getSize(List<int> widthList, List<int> heightList) {
-    final width = convertRadix16ToInt(widthList, reverse: true);
-    final height = convertRadix16ToInt(heightList, reverse: true);
+    final width = convertInt16ListToInt(widthList, reverse: true);
+    final height = convertInt16ListToInt(heightList, reverse: true);
 
     return Size(width, height);
   }
 
   @override
   Size getSize(ImageInput input) {
-    final widthList = input.getRange(6, 8);
-    final heightList = input.getRange(8, 10);
+    final dimensionList = input.getRange(6, 10);
+    assert(dimensionList.length == 4);
+    final widthList = dimensionList.sublist(0, 2);
+    final heightList = dimensionList.sublist(2, 4);
 
     return _getSize(widthList, heightList);
   }

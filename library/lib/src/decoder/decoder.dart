@@ -53,6 +53,23 @@ abstract class BaseDecoder {
     return int.tryParse(numString, radix: 16) ?? 0;
   }
 
+  /// Convert base16 int list (up to 4 bytes) to int type.
+  ///
+  /// If the number is stored in big endian, pass [reverse] as false.
+  ///
+  /// If the number is stored in little endian, pass [reverse] as true.
+  int convertInt16ListToInt(List<int> list, {bool reverse = false}) {
+    assert(list.length <= 4);
+    if (!reverse) {
+      list = list.toList().reversed.toList();
+    }
+    int result = 0;
+    for (int i = 0; i < list.length; i++) {
+      result = result + (list[i] << 8 * i);
+    }
+    return result;
+  }
+
   /// compare two list.
   bool compareTwoList(List<int> list1, List<int> list2) {
     final listEquals = ListEquality();
