@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:collection/collection.dart';
 import 'package:image_size_getter/image_size_getter.dart';
 
@@ -54,18 +56,11 @@ abstract class BaseDecoder {
   }
 
   /// Convert base16 int list (up to 4 bytes) to int type.
-  ///
-  /// If the number is stored in big endian, pass [reverse] as false.
-  ///
-  /// If the number is stored in little endian, pass [reverse] as true.
-  int convertInt16ListToInt(List<int> list, {bool reverse = false}) {
+  int convertInt16ListToInt(List<int> list, {Endian endianness = Endian.big}) {
     assert(list.length <= 4);
-    if (!reverse) {
-      list = list.toList().reversed.toList();
-    }
     int result = 0;
     for (int i = 0; i < list.length; i++) {
-      result = result + (list[i] << 8 * i);
+      result += (list[i] << 8 * (endianness == Endian.big ? list.length - i - 1 : i));
     }
     return result;
   }
@@ -112,6 +107,28 @@ mixin SimpleTypeValidator on BaseDecoder {
   @override
   bool isValid(ImageInput input) {
     final length = input.length;
+    final header = input.getRange(
+      0,
+      simpleFileHeaderAndFooter.startBytes.length,
+    );
+    final footer = input.getRange(
+      length - simpleFileHeaderAndFooter.endBytes.length,
+      length,
+    );
+
+    final headerEquals = compareTwoList(
+      header,
+      simpleFileHeaderAndFooter.startBytes,
+    );
+    final footerEquals = compareTwoList(
+      footer,
+      simpleFileHeaderAndFooter.endBytes,
+    );
+    return (headerEquals && footerEquals) || _isTrimmedValid(input);
+  }
+
+  bool _isTrimmedValid(ImageInput input) {
+    final length = input.trimmedLength;
     final header = input.getRange(
       0,
       simpleFileHeaderAndFooter.startBytes.length,
@@ -195,6 +212,37 @@ mixin MutilFileHeaderAndFooterValidator on BaseDecoder {
   @override
   bool isValid(ImageInput input) {
     final length = input.length;
+
+    for (final header in headerAndFooter.mutipleStartBytesList) {
+      for (final footer in headerAndFooter.mutipleEndBytesList) {
+        final fileHeader = input.getRange(
+          0,
+          header.length,
+        );
+        final fileFooter = input.getRange(
+          length - footer.length,
+          length,
+        );
+
+        final headerEquals = compareTwoList(
+          header,
+          fileHeader,
+        );
+        final footerEquals = compareTwoList(
+          footer,
+          fileFooter,
+        );
+        if (headerEquals && footerEquals) {
+          return true;
+        }
+      }
+    }
+
+    return _isTrimmedValid(input);
+  }
+
+  bool _isTrimmedValid(ImageInput input) {
+    final length = input.trimmedLength;
 
     for (final header in headerAndFooter.mutipleStartBytesList) {
       for (final footer in headerAndFooter.mutipleEndBytesList) {

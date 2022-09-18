@@ -23,14 +23,10 @@ class FileInput extends ImageInput {
   }
 
   @override
-  int get length {
-    var bytes = file.readAsBytesSync();
-    int dataLength = bytes.length;
-    while (dataLength-- > 0) {
-      if (bytes[dataLength - 1] != 0) return dataLength;
-    }
-    return bytes.length;
-  }
+  int get length => file.lengthSync();
+
+  @override
+  int get trimmedLength => trimmedNullsLength(file.readAsBytesSync());
 
   @override
   bool exists() {

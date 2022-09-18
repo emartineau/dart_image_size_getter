@@ -14,6 +14,9 @@ abstract class ImageInput {
   /// The length of the input data.
   int get length;
 
+  /// The length of the data excluding trailing null bytes
+  int get trimmedLength;
+
   /// Get a range of bytes from the input data.
   ///
   /// [start] and [end] are the start and end index of the range.
@@ -67,6 +70,9 @@ class HaveResourceImageInput extends ImageInput {
 
   @override
   int get length => innerInput.length;
+
+  @override
+  int get trimmedLength => length;
 }
 
 /// {@template image_size_getter.AsyncImageInput}

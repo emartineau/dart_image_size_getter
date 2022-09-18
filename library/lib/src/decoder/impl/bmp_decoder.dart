@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:image_size_getter/image_size_getter.dart';
 
 /// {@template image_size_getter.BmpDecoder}
@@ -14,21 +16,23 @@ class BmpDecoder extends BaseDecoder {
 
   @override
   Size getSize(ImageInput input) {
-    final widthList = input.getRange(0x12, 0x16);
-    final heightList = input.getRange(0x16, 0x1a);
+    final dimensionList = input.getRange(0x12, 0x1a);
+    final widthList = dimensionList.sublist(0, 4);
+    final heightList = dimensionList.sublist(4, 8);
 
-    final width = convertRadix16ToInt(widthList, reverse: true);
-    final height = convertRadix16ToInt(heightList, reverse: true);
+    final width = convertInt16ListToInt(widthList, endianness: Endian.little);
+    final height = convertInt16ListToInt(heightList, endianness: Endian.little);
     return Size(width, height);
   }
 
   @override
   Future<Size> getSizeAsync(AsyncImageInput input) async {
-    final widthList = await input.getRange(0x12, 0x16);
-    final heightList = await input.getRange(0x16, 0x1a);
+    final dimensionList = await input.getRange(0x12, 0x1a);
+    final widthList = dimensionList.sublist(0, 4);
+    final heightList = dimensionList.sublist(4, 8);
 
-    final width = convertRadix16ToInt(widthList, reverse: true);
-    final height = convertRadix16ToInt(heightList, reverse: true);
+    final width = convertInt16ListToInt(widthList, endianness: Endian.little);
+    final height = convertInt16ListToInt(heightList, endianness: Endian.little);
     return Size(width, height);
   }
 

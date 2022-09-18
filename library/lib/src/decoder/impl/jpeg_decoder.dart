@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:collection/collection.dart';
 import 'package:image_size_getter/image_size_getter.dart';
 import 'package:image_size_getter/src/entity/block_entity.dart';
@@ -40,8 +42,9 @@ class JpegDecoder extends BaseDecoder with SimpleTypeValidator {
       }
 
       if (block.type == 0xC0 || block.type == 0xC2) {
-        final widthList = input.getRange(start + 7, start + 9);
-        final heightList = input.getRange(start + 5, start + 7);
+        final dimensionList = input.getRange(start + 5, start + 9);
+        final heightList = dimensionList.sublist(0, 2);
+        final widthList = dimensionList.sublist(2, 4);
         return _getSize(widthList, heightList, orientation);
       } else {
         start += block.length;
@@ -50,8 +53,8 @@ class JpegDecoder extends BaseDecoder with SimpleTypeValidator {
   }
 
   Size _getSize(List<int> widthList, List<int> heightList, int orientation) {
-    final width = convertRadix16ToInt(widthList);
-    final height = convertRadix16ToInt(heightList);
+    final width = convertInt16ListToInt(widthList);
+    final height = convertInt16ListToInt(heightList);
     final needRotate = [5, 6, 7, 8].contains(orientation);
     return Size(width, height, needRotate: needRotate);
   }
@@ -81,9 +84,10 @@ class JpegDecoder extends BaseDecoder with SimpleTypeValidator {
       }
 
       if (block.type == 0xC0 || block.type == 0xC2) {
-        final widthList = await input.getRange(start + 7, start + 9);
-        final heightList = await input.getRange(start + 5, start + 7);
-        orientation = (await input.getRange(start + 9, start + 10))[0];
+        final dimensionList = await input.getRange(start + 5, start + 10);
+        final heightList = dimensionList.sublist(0, 2);
+        final widthList = dimensionList.sublist(2, 4);
+        orientation = (dimensionList.sublist(5, 10))[0];
         return _getSize(widthList, heightList, orientation);
       } else {
         start += block.length;
@@ -107,8 +111,7 @@ class JpegDecoder extends BaseDecoder with SimpleTypeValidator {
     }
   }
 
-  Future<BlockEntity?> _getBlockAsync(
-      AsyncImageInput input, int blockStart) async {
+  Future<BlockEntity?> _getBlockAsync(AsyncImageInput input, int blockStart) async {
     try {
       final blockInfoList = await input.getRange(blockStart, blockStart + 4);
 
@@ -116,8 +119,7 @@ class JpegDecoder extends BaseDecoder with SimpleTypeValidator {
         return null;
       }
 
-      final blockSizeList =
-          await input.getRange(blockStart + 2, blockStart + 4);
+      final blockSizeList = await input.getRange(blockStart + 2, blockStart + 4);
 
       return _createBlock(blockSizeList, blockStart, blockInfoList);
     } catch (e) {
@@ -130,8 +132,7 @@ class JpegDecoder extends BaseDecoder with SimpleTypeValidator {
     int blockStart,
     List<int> blockInfoList,
   ) {
-    final blockLength =
-        convertRadix16ToInt(sizeList) + 2; // +2 for 0xFF and TYPE
+    final blockLength = convertInt16ListToInt(sizeList) + 2; // +2 for 0xFF and TYPE
     final typeInt = blockInfoList[1];
 
     return BlockEntity(typeInt, blockLength, blockStart);
@@ -170,8 +171,7 @@ class JpegDecoder extends BaseDecoder with SimpleTypeValidator {
 
     final listEquality = ListEquality();
 
-    if (!listEquality
-        .equals(exifIdentifier, [0x45, 0x78, 0x69, 0x66, 0x00, 0x00])) {
+    if (!listEquality.equals(exifIdentifier, [0x45, 0x78, 0x69, 0x66, 0x00, 0x00])) {
       return null;
     }
 
@@ -179,7 +179,7 @@ class JpegDecoder extends BaseDecoder with SimpleTypeValidator {
 
     int getNumber(int start, int end) {
       final numberList = app1blockData.sublist(start, end);
-      return convertRadix16ToInt(numberList, reverse: littleEndian);
+      return convertInt16ListToInt(numberList, endianness: littleEndian ? Endian.little : Endian.big);
     }
 
     // Get idf byte

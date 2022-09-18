@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:image_size_getter/image_size_getter.dart';
 
 /// {@template image_size_getter.GifDecoder}
@@ -12,8 +14,8 @@ class GifDecoder extends BaseDecoder with MutilFileHeaderAndFooterValidator {
   String get decoderName => 'gif';
 
   Size _getSize(List<int> widthList, List<int> heightList) {
-    final width = convertInt16ListToInt(widthList, reverse: true);
-    final height = convertInt16ListToInt(heightList, reverse: true);
+    final width = convertInt16ListToInt(widthList, endianness: Endian.little);
+    final height = convertInt16ListToInt(heightList, endianness: Endian.little);
 
     return Size(width, height);
   }
@@ -21,7 +23,6 @@ class GifDecoder extends BaseDecoder with MutilFileHeaderAndFooterValidator {
   @override
   Size getSize(ImageInput input) {
     final dimensionList = input.getRange(6, 10);
-    assert(dimensionList.length == 4);
     final widthList = dimensionList.sublist(0, 2);
     final heightList = dimensionList.sublist(2, 4);
 
@@ -30,8 +31,9 @@ class GifDecoder extends BaseDecoder with MutilFileHeaderAndFooterValidator {
 
   @override
   Future<Size> getSizeAsync(AsyncImageInput input) async {
-    final widthList = await input.getRange(6, 8);
-    final heightList = await input.getRange(8, 10);
+    final dimensionList = await input.getRange(6, 10);
+    final widthList = dimensionList.sublist(0, 2);
+    final heightList = dimensionList.sublist(2, 4);
 
     return _getSize(widthList, heightList);
   }

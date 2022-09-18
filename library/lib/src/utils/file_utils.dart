@@ -32,3 +32,12 @@ class FileUtils {
     }
   }
 }
+
+/// Gets the length of bytes with trailing null bytes excluded
+int trimmedNullsLength(List<int> bytes) {
+  int dataLength = bytes.length;
+  while (dataLength-- > 0) {
+    if (bytes[dataLength - 1] != 0) return dataLength;
+  }
+  return bytes.length;
+}

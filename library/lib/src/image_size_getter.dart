@@ -1,50 +1,8 @@
-import 'dart:collection';
-
 import 'package:image_size_getter/image_size_getter.dart';
 
 export 'core/input.dart';
 
-/// {@template image_size_getter._DecoderContainer}
-///
-/// [_DecoderContainer] is a container for [BaseDecoder]s.
-///
-/// {@endtemplate}
-class _DecoderContainer extends IterableBase<BaseDecoder> {
-  /// {@macro image_size_getter._DecoderContainer}
-  _DecoderContainer(List<BaseDecoder> decoders) {
-    for (final decoder in decoders) {
-      _decoders[decoder.decoderName] = decoder;
-    }
-  }
-
-  /// The [BaseDecoder]s.
-  final Map<String, BaseDecoder> _decoders = {};
-
-  /// {@template image_size_getter._DecoderContainer.register}
-  ///
-  /// Registers a [BaseDecoder] to the container.
-  ///
-  /// If the [BaseDecoder] is already registered, it will be replaced.
-  ///
-  /// {@endtemplate}
-  void registerDecoder(BaseDecoder decoder) {
-    _decoders[decoder.decoderName] = decoder;
-  }
-
-  @override
-  Iterator<BaseDecoder> get iterator => _decoders.values.iterator;
-}
-
-/// The instance of [_DecoderContainer].
-///
-/// This instance is used to register [BaseDecoder]s, it will be used by [ImageSizeGetter].
-final _decoders = _DecoderContainer([
-  const GifDecoder(),
-  const JpegDecoder(),
-  const WebpDecoder(),
-  const PngDecoder(),
-  const BmpDecoder(),
-]);
+enum DecoderType { Jpeg, Png, Gif, Webp, Bmp }
 
 /// {@template image_size_getter.ImageSizeGetter}
 ///
@@ -67,10 +25,14 @@ final _decoders = _DecoderContainer([
 ///
 /// {endtemplate}
 class ImageSizeGetter {
-  /// {@macro image_size_getter._DecoderContainer.register}
-  static void registerDecoder(BaseDecoder decoder) {
-    _decoders.registerDecoder(decoder);
-  }
+  /// The decoders.
+  static Map<DecoderType, BaseDecoder> _decoders = {
+    DecoderType.Gif: const GifDecoder(),
+    DecoderType.Jpeg: const JpegDecoder(),
+    DecoderType.Webp: const WebpDecoder(),
+    DecoderType.Png: const PngDecoder(),
+    DecoderType.Bmp: const BmpDecoder(),
+  };
 
   /// Returns the [input] is png format or not.
   ///
@@ -104,19 +66,26 @@ class ImageSizeGetter {
   ///
   /// Get the size of the [input].
   ///
+  /// Will check using [suggestedDecoder] first if given
+  ///
   /// If the [input] not exists, it will throw [StateError].
   ///
   /// If the [input] is not a valid image format, it will throw [UnsupportedError].
   ///
   /// {@endtemplate}
-  static Size getSize(ImageInput input) {
+  static Size getSize(ImageInput input, {DecoderType? suggestedDecoder}) {
     if (!input.exists()) {
       throw StateError('The input is not exists.');
     }
+    if (suggestedDecoder != null && _decoders[suggestedDecoder]!.isValid(input)) {
+      return _decoders[suggestedDecoder]!.getSize(input);
+    }
 
-    for (var value in _decoders) {
-      if (value.isValid(input)) {
-        return value.getSize(input);
+    for (var decoderType in _decoders.keys) {
+      var decoder = _decoders[decoderType]!;
+      if (decoder == suggestedDecoder) continue;
+      if (decoder.isValid(input)) {
+        return decoder.getSize(input);
       }
     }
 
@@ -126,7 +95,7 @@ class ImageSizeGetter {
   /// {@macro image_size_getter.getSize}
   ///
   /// The method is async.
-  static Future<Size> getSizeAsync(AsyncImageInput input) async {
+  static Future<Size> getSizeAsync(AsyncImageInput input, {DecoderType? suggestedDecoder}) async {
     if (!await input.exists()) {
       throw StateError('The input is not exists.');
     }
@@ -140,9 +109,15 @@ class ImageSizeGetter {
       }
     }
 
-    for (var value in _decoders) {
-      if (await value.isValidAsync(input)) {
-        return value.getSizeAsync(input);
+    if (suggestedDecoder != null && await _decoders[suggestedDecoder]!.isValidAsync(input)) {
+      return _decoders[suggestedDecoder]!.getSizeAsync(input);
+    }
+
+    for (var decoderType in _decoders.keys) {
+      var decoder = _decoders[decoderType]!;
+      if (decoder == suggestedDecoder) continue;
+      if (await decoder.isValidAsync(input)) {
+        return decoder.getSizeAsync(input);
       }
     }
 
